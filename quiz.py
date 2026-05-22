@@ -1,19 +1,17 @@
 import os
 from pathlib import Path
+
 import discord
 from discord.ext import commands
-import google.generativeai as genai
+from openai import OpenAI
 
 # =========================
-# GEMINI API SETUP
+# OPENROUTER SETUP
 # =========================
 
-genai.configure(
-    api_key=os.getenv("GEMINI_API_KEY")
-)
-
-model = genai.GenerativeModel(
-    "gemini-2.0-flash-lite"
+client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=os.getenv("OPENROUTER_API_KEY"),
 )
 
 # =========================
@@ -34,7 +32,13 @@ bot = commands.Bot(
 
 @bot.event
 async def on_ready():
+
     print(f"Zalogowano jako {bot.user}")
+
+    await bot.change_presence(
+        status=discord.Status.online,
+        activity=discord.Game("Quizy AI 🎮")
+    )
 
 # =========================
 # HELLO COMMAND
@@ -48,6 +52,7 @@ async def hello(ctx):
 # QUIZ COMMAND
 # =========================
 
+@commands.cooldown(1, 10, commands.BucketType.user)
 @bot.command()
 async def quiz(ctx, *, topic="random"):
 
@@ -56,7 +61,7 @@ async def quiz(ctx, *, topic="random"):
     if topic.lower() == "random":
 
         prompt = """
-        Generate ONE random fun quiz question.
+        Generate ONE fun random quiz question.
 
         Return EXACTLY in this format:
 
@@ -65,16 +70,12 @@ async def quiz(ctx, *, topic="random"):
         B: answer
         C: answer
         D: answer
-        CORRECT: one correct letter
+        CORRECT: letter
 
-        The correct answer must sometimes be A,
-        sometimes B, sometimes C, sometimes D.
+        The correct answer should sometimes be:
+        A, B, C or D.
 
-        ONLY return:
-        A or B or C or D in CORRECT.
-
-        Example:
-        CORRECT: C
+        ONLY return the quiz.
         """
 
     else:
@@ -89,40 +90,74 @@ async def quiz(ctx, *, topic="random"):
         B: answer
         C: answer
         D: answer
-        CORRECT: one correct letter
+        CORRECT: letter
 
-        The correct answer must sometimes be A,
-        sometimes B, sometimes C, sometimes D.
+        The correct answer should sometimes be:
+        A, B, C or D.
 
-        ONLY return:
-        A or B or C or D in CORRECT.
-
-        Example:
-        CORRECT: D
+        ONLY return the quiz.
         """
 
-    response = model.generate_content(prompt)
+    try:
 
-    text = response.text.strip()
+        response = client.chat.completions.create(
+            model="deepseek/deepseek-chat-v3-0324:free",
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+        )
 
-    print(text)
+        text = response.choices[0].message.content.strip()
+
+        print(text)
+
+    except Exception as e:
+
+        print(e)
+
+        await ctx.send(
+            "⚠️ AI jest chwilowo niedostępne."
+        )
+
+        return
 
     try:
 
         lines = text.split("\n")
 
-        question = lines[0].replace("QUESTION:", "").strip()
+        question = lines[0].replace(
+            "QUESTION:", ""
+        ).strip()
 
-        a = lines[1].replace("A:", "").strip()
-        b = lines[2].replace("B:", "").strip()
-        c = lines[3].replace("C:", "").strip()
-        d = lines[4].replace("D:", "").strip()
+        a = lines[1].replace(
+            "A:", ""
+        ).strip()
 
-        correct = lines[5].replace("CORRECT:", "").strip().upper()
+        b = lines[2].replace(
+            "B:", ""
+        ).strip()
+
+        c = lines[3].replace(
+            "C:", ""
+        ).strip()
+
+        d = lines[4].replace(
+            "D:", ""
+        ).strip()
+
+        correct = lines[5].replace(
+            "CORRECT:", ""
+        ).strip().upper()
 
     except:
 
-        await ctx.send("❌ AI zwróciło błędny format.")
+        await ctx.send(
+            "❌ AI zwróciło błędny format."
+        )
+
         return
 
     embed = discord.Embed(
@@ -131,16 +166,38 @@ async def quiz(ctx, *, topic="random"):
         color=discord.Color.blue()
     )
 
-    embed.add_field(name="A", value=a, inline=False)
-    embed.add_field(name="B", value=b, inline=False)
-    embed.add_field(name="C", value=c, inline=False)
-    embed.add_field(name="D", value=d, inline=False)
+    embed.add_field(
+        name="A",
+        value=a,
+        inline=False
+    )
 
-    embed.set_footer(text="Napisz A, B, C lub D")
+    embed.add_field(
+        name="B",
+        value=b,
+        inline=False
+    )
+
+    embed.add_field(
+        name="C",
+        value=c,
+        inline=False
+    )
+
+    embed.add_field(
+        name="D",
+        value=d,
+        inline=False
+    )
+
+    embed.set_footer(
+        text="Napisz A, B, C lub D"
+    )
 
     await ctx.send(embed=embed)
 
     def check(message):
+
         return (
             message.author == ctx.author
             and message.channel == ctx.channel
@@ -158,7 +215,9 @@ async def quiz(ctx, *, topic="random"):
 
         if user_answer == correct:
 
-            await ctx.send("✅ Dobra odpowiedź!")
+            await ctx.send(
+                "✅ Dobra odpowiedź!"
+            )
 
         else:
 
@@ -169,32 +228,31 @@ async def quiz(ctx, *, topic="random"):
 
     except:
 
-        await ctx.send("⏰ Koniec czasu!")
+        await ctx.send(
+            "⏰ Koniec czasu!"
+        )
 
 # =========================
-# DISCORD TOKEN
+# COOLDOWN ERROR
 # =========================
 
-def get_discord_token():
+@quiz.error
+async def quiz_error(ctx, error):
 
-    token = os.getenv("DISCORD_TOKEN")
+    if isinstance(
+        error,
+        commands.CommandOnCooldown
+    ):
 
-    if token:
-        return token.strip().strip('"\'')
-    
-    path = Path(__file__).resolve().parent / "token.txt"
-
-    if path.exists():
-        return path.read_text(
-            encoding="utf-8"
-        ).strip().strip('"\'')
-
-    raise SystemExit(
-        "Nie znaleziono tokena Discord."
-    )
+        await ctx.send(
+            f"⏳ Poczekaj "
+            f"{round(error.retry_after, 1)} sekund!"
+        )
 
 # =========================
 # START BOT
 # =========================
 
-bot.run(os.getenv("DISCORD_TOKEN"))
+bot.run(
+    os.getenv("DISCORD_TOKEN")
+)
