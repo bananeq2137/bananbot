@@ -113,7 +113,7 @@ async def quiz(ctx, *, topic="random"):
     try:
 
         response = client.chat.completions.create(
-            model="google/gemma-3-27b-it:free",
+            model="mistralai/mistral-7b-instruct:free",
             messages=[
                 {
                     "role": "user",
