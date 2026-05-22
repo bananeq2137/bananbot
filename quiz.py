@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 
 import discord
 from discord.ext import commands
@@ -46,17 +45,26 @@ async def on_ready():
 
 @bot.command()
 async def hello(ctx):
-    await ctx.send(f"Witam, to jest {bot.user}")
+
+    await ctx.send(
+        f"Witam, to jest {bot.user}"
+    )
 
 # =========================
 # QUIZ COMMAND
 # =========================
 
-@commands.cooldown(1, 10, commands.BucketType.user)
+@commands.cooldown(
+    1,
+    10,
+    commands.BucketType.user
+)
 @bot.command()
 async def quiz(ctx, *, topic="random"):
 
-    await ctx.send("🧠 Generuję pytanie AI...")
+    await ctx.send(
+        "🧠 Generuję pytanie AI..."
+    )
 
     if topic.lower() == "random":
 
@@ -98,6 +106,10 @@ async def quiz(ctx, *, topic="random"):
         ONLY return the quiz.
         """
 
+    # =========================
+    # OPENROUTER REQUEST
+    # =========================
+
     try:
 
         response = client.chat.completions.create(
@@ -116,49 +128,67 @@ async def quiz(ctx, *, topic="random"):
 
     except Exception as e:
 
+        print("OPENROUTER ERROR:")
         print(e)
 
         await ctx.send(
-            "⚠️ AI jest chwilowo niedostępne."
+            f"⚠️ Error:\n{e}"
         )
 
         return
+
+    # =========================
+    # PARSE QUIZ
+    # =========================
 
     try:
 
         lines = text.split("\n")
 
         question = lines[0].replace(
-            "QUESTION:", ""
+            "QUESTION:",
+            ""
         ).strip()
 
         a = lines[1].replace(
-            "A:", ""
+            "A:",
+            ""
         ).strip()
 
         b = lines[2].replace(
-            "B:", ""
+            "B:",
+            ""
         ).strip()
 
         c = lines[3].replace(
-            "C:", ""
+            "C:",
+            ""
         ).strip()
 
         d = lines[4].replace(
-            "D:", ""
+            "D:",
+            ""
         ).strip()
 
         correct = lines[5].replace(
-            "CORRECT:", ""
+            "CORRECT:",
+            ""
         ).strip().upper()
 
-    except:
+    except Exception as e:
+
+        print("PARSING ERROR:")
+        print(e)
 
         await ctx.send(
             "❌ AI zwróciło błędny format."
         )
 
         return
+
+    # =========================
+    # EMBED
+    # =========================
 
     embed = discord.Embed(
         title=f"🎮 Quiz: {topic}",
@@ -195,6 +225,10 @@ async def quiz(ctx, *, topic="random"):
     )
 
     await ctx.send(embed=embed)
+
+    # =========================
+    # ANSWER CHECK
+    # =========================
 
     def check(message):
 
