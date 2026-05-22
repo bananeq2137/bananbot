@@ -113,7 +113,7 @@ async def quiz(ctx, *, topic="random"):
     try:
 
         response = client.chat.completions.create(
-            model="deepseek/deepseek-chat-v3-0324:free",
+            model="google/gemma-3-27b-it:free",
             messages=[
                 {
                     "role": "user",
