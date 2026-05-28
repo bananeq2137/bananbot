@@ -1,6 +1,7 @@
 import os
 import json
 from pathlib import Path
+import sqlite3
 
 import discord
 from discord.ext import commands
@@ -13,6 +14,18 @@ from google import genai
 client = genai.Client(
     api_key=os.getenv("GEMINI_API_KEY")
 )
+
+conn = sqlite3.connect("scores.db")
+cursor = conn.cursor()
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS scores (
+    user_id TEXT PRIMARY KEY,
+    points INTEGER NOT NULL
+)
+""")
+
+conn.commit()
 
 SCORES_FILE = Path("scores.json")
 
@@ -205,16 +218,34 @@ Rules:
 
         if user_answer == correct:
 
-            scores = load_scores()
-
             user_id = str(ctx.author.id)
 
-            scores[user_id] = scores.get(user_id, 0) + 1
+            cursor.execute(
+                "SELECT points FROM scores WHERE user_id = ?",
+                (user_id,)
+            )
 
-            save_scores(scores)
+            result = cursor.fetchone()
+
+            if result:
+                points = result[0] + 1
+
+                cursor.execute(
+                    "UPDATE scores SET points = ? WHERE user_id = ?",
+                    (points, user_id)
+                )
+            else:
+                points = 1
+
+                cursor.execute(
+                    "INSERT INTO scores (user_id, points) VALUES (?, ?)",
+                    (user_id, points)
+                )
+
+            conn.commit()
 
             await ctx.send(
-                f"✅ Dobra odpowiedź!\n🏆 Punkty: {scores[user_id]}"
+                f"✅ Dobra odpowiedź!\n🏆 Punkty: {points}"
             )
 
         else:
@@ -253,7 +284,11 @@ async def quiz_error(ctx, error):
 @bot.command()
 async def rank(ctx):
 
-    scores = load_scores()
+    cursor.execute(
+    "SELECT user_id, points FROM scores ORDER BY points DESC LIMIT 10"
+)
+
+    scores = cursor.fetchall()
 
     if not scores:
         await ctx.send("📊 Ranking jest pusty.")
