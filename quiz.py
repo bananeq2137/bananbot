@@ -1,4 +1,5 @@
 import os
+import json
 
 import discord
 from discord.ext import commands
@@ -30,7 +31,6 @@ bot = commands.Bot(
 
 @bot.event
 async def on_ready():
-
     print(f"Zalogowano jako {bot.user}")
 
     await bot.change_presence(
@@ -44,10 +44,7 @@ async def on_ready():
 
 @bot.command()
 async def hello(ctx):
-
-    await ctx.send(
-        f"Witam, to jest {bot.user}"
-    )
+    await ctx.send(f"Witam, to jest {bot.user}")
 
 # =========================
 # QUIZ COMMAND
@@ -64,46 +61,32 @@ async def quiz(ctx, *, topic="random"):
     await ctx.send("🧠 Generuję pytanie AI...")
 
     if topic.lower() == "random":
+        topic = "random topic"
 
-        prompt = """
-Generate ONE fun random quiz question.
+    prompt = f"""
+Create ONE quiz question about: {topic}
 
-Return EXACTLY in this format:
+Return ONLY valid JSON.
 
-QUESTION: question
-A: answer
-B: answer
-C: answer
-D: answer
-CORRECT: letter
+Example:
 
-The correct answer should sometimes be A, sometimes B, sometimes C, sometimes D.
+{{
+  "question": "What is the capital of France?",
+  "A": "Berlin",
+  "B": "Paris",
+  "C": "Madrid",
+  "D": "Rome",
+  "correct": "B"
+}}
 
-ONLY return the quiz.
+Rules:
+- No markdown
+- No code blocks
+- No explanations
+- Return ONLY JSON
+- correct must be A, B, C or D
+- Randomize the correct answer position
 """
-
-    else:
-
-        prompt = f"""
-Generate ONE quiz question about {topic}.
-
-Return EXACTLY in this format:
-
-QUESTION: question
-A: answer
-B: answer
-C: answer
-D: answer
-CORRECT: letter
-
-The correct answer should sometimes be A, sometimes B, sometimes C, sometimes D.
-
-ONLY return the quiz.
-"""
-
-    # =========================
-    # GEMINI REQUEST
-    # =========================
 
     try:
 
@@ -114,7 +97,15 @@ ONLY return the quiz.
 
         text = response.text.strip()
 
+        print("RAW RESPONSE:")
         print(text)
+
+        # usuwanie ewentualnych ```json
+        text = text.replace("```json", "")
+        text = text.replace("```", "")
+        text = text.strip()
+
+        quiz_data = json.loads(text)
 
     except Exception as e:
 
@@ -122,43 +113,30 @@ ONLY return the quiz.
         print(e)
 
         await ctx.send(
-            f"⚠️ Error:\n{e}"
+            f"⚠️ AI Error:\n{e}"
         )
 
         return
-
-    # =========================
-    # PARSE QUIZ
-    # =========================
 
     try:
 
-        lines = [line.strip() for line in text.split("\n") if line.strip()]
-
-        question = lines[0].replace("QUESTION:", "").strip()
-        a = lines[1].replace("A:", "").strip()
-        b = lines[2].replace("B:", "").strip()
-        c = lines[3].replace("C:", "").strip()
-        d = lines[4].replace("D:", "").strip()
-        correct = lines[5].replace("CORRECT:", "").strip().upper()
+        question = quiz_data["question"]
+        a = quiz_data["A"]
+        b = quiz_data["B"]
+        c = quiz_data["C"]
+        d = quiz_data["D"]
+        correct = quiz_data["correct"].upper()
 
     except Exception as e:
 
-        print("PARSING ERROR:")
+        print("JSON ERROR:")
         print(e)
 
-        print("RAW RESPONSE:")
-        print(text)
-
         await ctx.send(
-            "❌ AI zwróciło błędny format."
+            "❌ AI zwróciło niepoprawny format."
         )
 
         return
-
-    # =========================
-    # EMBED
-    # =========================
 
     embed = discord.Embed(
         title=f"🎮 Quiz: {topic}",
@@ -196,12 +174,7 @@ ONLY return the quiz.
 
     await ctx.send(embed=embed)
 
-    # =========================
-    # ANSWER CHECK
-    # =========================
-
     def check(message):
-
         return (
             message.author == ctx.author
             and message.channel == ctx.channel
