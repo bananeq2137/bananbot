@@ -285,8 +285,8 @@ async def quiz_error(ctx, error):
 async def rank(ctx):
 
     cursor.execute(
-    "SELECT user_id, points FROM scores ORDER BY points DESC LIMIT 10"
-)
+        "SELECT user_id, points FROM scores ORDER BY points DESC LIMIT 10"
+    )
 
     scores = cursor.fetchall()
 
@@ -294,15 +294,9 @@ async def rank(ctx):
         await ctx.send("📊 Ranking jest pusty.")
         return
 
-    sorted_scores = sorted(
-        scores.items(),
-        key=lambda x: x[1],
-        reverse=True
-    )
-
     text = "🏆 Ranking:\n\n"
 
-    for place, (user_id, points) in enumerate(sorted_scores[:10], start=1):
+    for place, (user_id, points) in enumerate(scores, start=1):
 
         try:
             user = await bot.fetch_user(int(user_id))
