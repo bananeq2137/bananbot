@@ -2,15 +2,14 @@ import os
 
 import discord
 from discord.ext import commands
-from openai import OpenAI
+from google import genai
 
 # =========================
-# OPENROUTER SETUP
+# GEMINI SETUP
 # =========================
 
-client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=os.getenv("OPENROUTER_API_KEY"),
+client = genai.Client(
+    api_key=os.getenv("GEMINI_API_KEY")
 )
 
 # =========================
@@ -62,73 +61,64 @@ async def hello(ctx):
 @bot.command()
 async def quiz(ctx, *, topic="random"):
 
-    await ctx.send(
-        "🧠 Generuję pytanie AI..."
-    )
+    await ctx.send("🧠 Generuję pytanie AI...")
 
     if topic.lower() == "random":
 
         prompt = """
-        Generate ONE fun random quiz question.
+Generate ONE fun random quiz question.
 
-        Return EXACTLY in this format:
+Return EXACTLY in this format:
 
-        QUESTION: question
-        A: answer
-        B: answer
-        C: answer
-        D: answer
-        CORRECT: letter
+QUESTION: question
+A: answer
+B: answer
+C: answer
+D: answer
+CORRECT: letter
 
-        The correct answer should sometimes be:
-        A, B, C or D.
+The correct answer should sometimes be A, sometimes B, sometimes C, sometimes D.
 
-        ONLY return the quiz.
-        """
+ONLY return the quiz.
+"""
 
     else:
 
         prompt = f"""
-        Generate ONE quiz question about {topic}.
+Generate ONE quiz question about {topic}.
 
-        Return EXACTLY in this format:
+Return EXACTLY in this format:
 
-        QUESTION: question
-        A: answer
-        B: answer
-        C: answer
-        D: answer
-        CORRECT: letter
+QUESTION: question
+A: answer
+B: answer
+C: answer
+D: answer
+CORRECT: letter
 
-        The correct answer should sometimes be:
-        A, B, C or D.
+The correct answer should sometimes be A, sometimes B, sometimes C, sometimes D.
 
-        ONLY return the quiz.
-        """
+ONLY return the quiz.
+"""
 
     # =========================
-    # OPENROUTER REQUEST
+    # GEMINI REQUEST
     # =========================
 
     try:
 
-        response = client.chat.completions.create(
-            model="mistralai/mistral-7b-instruct:free",
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ]
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt
         )
 
-        text = response.choices[0].message.content.strip()
+        text = response.text.strip()
 
         print(text)
 
     except Exception as e:
 
-        print("OPENROUTER ERROR:")
+        print("GEMINI ERROR:")
         print(e)
 
         await ctx.send(
@@ -143,42 +133,22 @@ async def quiz(ctx, *, topic="random"):
 
     try:
 
-        lines = text.split("\n")
+        lines = [line.strip() for line in text.split("\n") if line.strip()]
 
-        question = lines[0].replace(
-            "QUESTION:",
-            ""
-        ).strip()
-
-        a = lines[1].replace(
-            "A:",
-            ""
-        ).strip()
-
-        b = lines[2].replace(
-            "B:",
-            ""
-        ).strip()
-
-        c = lines[3].replace(
-            "C:",
-            ""
-        ).strip()
-
-        d = lines[4].replace(
-            "D:",
-            ""
-        ).strip()
-
-        correct = lines[5].replace(
-            "CORRECT:",
-            ""
-        ).strip().upper()
+        question = lines[0].replace("QUESTION:", "").strip()
+        a = lines[1].replace("A:", "").strip()
+        b = lines[2].replace("B:", "").strip()
+        c = lines[3].replace("C:", "").strip()
+        d = lines[4].replace("D:", "").strip()
+        correct = lines[5].replace("CORRECT:", "").strip().upper()
 
     except Exception as e:
 
         print("PARSING ERROR:")
         print(e)
+
+        print("RAW RESPONSE:")
+        print(text)
 
         await ctx.send(
             "❌ AI zwróciło błędny format."
@@ -256,8 +226,7 @@ async def quiz(ctx, *, topic="random"):
         else:
 
             await ctx.send(
-                f"❌ Zła odpowiedź!\n"
-                f"Poprawna odpowiedź: {correct}"
+                f"❌ Zła odpowiedź!\nPoprawna odpowiedź: {correct}"
             )
 
     except:
@@ -279,8 +248,7 @@ async def quiz_error(ctx, error):
     ):
 
         await ctx.send(
-            f"⏳ Poczekaj "
-            f"{round(error.retry_after, 1)} sekund!"
+            f"⏳ Poczekaj {round(error.retry_after, 1)} sekund!"
         )
 
 # =========================
