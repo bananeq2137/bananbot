@@ -1,5 +1,6 @@
 import os
 import json
+from pathlib import Path
 
 import discord
 from discord.ext import commands
@@ -12,6 +13,18 @@ from google import genai
 client = genai.Client(
     api_key=os.getenv("GEMINI_API_KEY")
 )
+
+SCORES_FILE = Path("scores.json")
+
+def load_scores():
+    if SCORES_FILE.exists():
+        with open(SCORES_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+def save_scores(scores):
+    with open(SCORES_FILE, "w", encoding="utf-8") as f:
+        json.dump(scores, f, indent=4)
 
 # =========================
 # DISCORD BOT SETUP
@@ -192,8 +205,16 @@ Rules:
 
         if user_answer == correct:
 
+            scores = load_scores()
+
+            user_id = str(ctx.author.id)
+
+            scores[user_id] = scores.get(user_id, 0) + 1
+
+            save_scores(scores)
+
             await ctx.send(
-                "✅ Dobra odpowiedź!"
+                f"✅ Dobra odpowiedź!\n🏆 Punkty: {scores[user_id]}"
             )
 
         else:
@@ -227,6 +248,36 @@ async def quiz_error(ctx, error):
 # =========================
 # START BOT
 # =========================
+
+
+@bot.command()
+async def rank(ctx):
+
+    scores = load_scores()
+
+    if not scores:
+        await ctx.send("📊 Ranking jest pusty.")
+        return
+
+    sorted_scores = sorted(
+        scores.items(),
+        key=lambda x: x[1],
+        reverse=True
+    )
+
+    text = "🏆 Ranking:\n\n"
+
+    for place, (user_id, points) in enumerate(sorted_scores[:10], start=1):
+
+        try:
+            user = await bot.fetch_user(int(user_id))
+            name = user.name
+        except:
+            name = f"User {user_id}"
+
+        text += f"{place}. {name} - {points} pkt\n"
+
+    await ctx.send(text)
 
 bot.run(
     os.getenv("DISCORD_TOKEN")
