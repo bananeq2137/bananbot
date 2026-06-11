@@ -139,10 +139,10 @@ Rules:
         print(e)
 
         await ctx.send(
-            f"⚠️ AI Error:\n{e}"
-        )
+            "⚠️ Gemini jest obecnie przeciążone. Spróbuj ponownie za chwilę."
+            )
 
-        return
+    return
 
     try:
 
@@ -307,6 +307,37 @@ async def rank(ctx):
         text += f"{place}. {name} - {points} pkt\n"
 
     await ctx.send(text)
+
+
+
+
+TASKS_FILE = Path("tasks.json")
+
+
+def load_tasks():
+    if TASKS_FILE.exists():
+        with open(TASKS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+
+def save_tasks(tasks):
+    with open(TASKS_FILE, "w", encoding="utf-8") as f:
+        json.dump(tasks, f, indent=4, ensure_ascii=False)
+
+
+@bot.command()
+async def addtask(ctx, *, task: str):
+    tasks = load_tasks()
+    user_id = str(ctx.author.id)
+
+    if user_id not in tasks:
+        tasks[user_id] = []
+
+    tasks[user_id].append(task)
+    save_tasks(tasks)
+
+    await ctx.send(f"✅ Dodano zadanie:\n{len(tasks[user_id])}. {task}")
 
 bot.run(
     os.getenv("DISCORD_TOKEN")
