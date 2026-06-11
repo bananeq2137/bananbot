@@ -339,6 +339,45 @@ async def addtask(ctx, *, task: str):
 
     await ctx.send(f"✅ Dodano zadanie:\n{len(tasks[user_id])}. {task}")
 
+@bot.command()
+async def tasks(ctx):
+
+    tasks = load_tasks()
+    user_id = str(ctx.author.id)
+
+    if user_id not in tasks or len(tasks[user_id]) == 0:
+        await ctx.send("📭 Nie masz żadnych zadań.")
+        return
+
+    text = "📝 Twoje zadania:\n\n"
+
+    for i, task in enumerate(tasks[user_id], start=1):
+        text += f"{i}. {task}\n"
+
+    await ctx.send(text)
+
+@bot.command()
+async def done(ctx, number: int):
+
+    tasks = load_tasks()
+    user_id = str(ctx.author.id)
+
+    if user_id not in tasks:
+        await ctx.send("📭 Nie masz zadań.")
+        return
+
+    if number < 1 or number > len(tasks[user_id]):
+        await ctx.send("❌ Nieprawidłowy numer zadania.")
+        return
+
+    removed = tasks[user_id].pop(number - 1)
+
+    save_tasks(tasks)
+
+    await ctx.send(
+        f"✅ Wykonano zadanie:\n{removed}"
+    )
+
 bot.run(
     os.getenv("DISCORD_TOKEN")
 )
