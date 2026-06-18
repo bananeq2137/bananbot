@@ -414,6 +414,11 @@ async def mecz(ctx):
         data = response.json()
 
         matches = data.get("matches", [])
+        matches = [
+            m for m in matches
+            if m["status"] in ["SCHEDULED", "TIMED", "LIVE", "IN_PLAY", "PAUSED"]
+]
+
 
         if not matches:
             await ctx.send("📅 Dzisiaj nie ma żadnych meczów.")
