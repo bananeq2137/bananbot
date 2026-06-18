@@ -27,17 +27,7 @@ CREATE TABLE IF NOT EXISTS scores (
 
 conn.commit()
 
-SCORES_FILE = Path("scores.json")
 
-def load_scores():
-    if SCORES_FILE.exists():
-        with open(SCORES_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {}
-
-def save_scores(scores):
-    with open(SCORES_FILE, "w", encoding="utf-8") as f:
-        json.dump(scores, f, indent=4)
 
 # =========================
 # DISCORD BOT SETUP
@@ -117,7 +107,7 @@ Rules:
     try:
 
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-2.0-flash",
             contents=prompt
         )
 
