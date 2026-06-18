@@ -2,6 +2,8 @@ import os
 import json
 from pathlib import Path
 import sqlite3
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import discord
 from discord.ext import commands
@@ -447,7 +449,15 @@ async def mecz(ctx):
         home = match["homeTeam"]["name"]
         away = match["awayTeam"]["name"]
         league = match["competition"]["name"]
-        utc = match["utcDate"]
+        utc_time = datetime.fromisoformat(
+            match["utcDate"].replace("Z", "+00:00")
+        )
+
+        berlin_time = utc_time.astimezone(
+            ZoneInfo("Europe/Berlin")
+        )
+
+        time_text = berlin_time.strftime("%d.%m.%Y %H:%M")
 
         embed = discord.Embed(
             title="⚽ Polecany mecz dnia",
@@ -467,8 +477,8 @@ async def mecz(ctx):
         )
 
         embed.add_field(
-            name="Start (UTC)",
-            value=utc.replace("T", " ").replace("Z", ""),
+            name="🕒 Godzina (Berlin)",
+            value=time_text,
             inline=False
         )
 
