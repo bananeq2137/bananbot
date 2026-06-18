@@ -8,8 +8,7 @@ from discord.ext import commands
 from google import genai
 
 
-import requests
-from datetime import datetime
+
 
 # =========================
 # GEMINI SETUP
@@ -385,6 +384,107 @@ async def done(ctx, number: int):
     await ctx.send(
         f"✅ Wykonano zadanie:\n{removed}"
     )
+
+import requests
+from random import choice
+
+
+@bot.command()
+async def mecz(ctx):
+    await ctx.send("⚽ Szukam najciekawszego meczu dnia...")
+
+    api_key = os.getenv("FOOTBALL_API_KEY")
+
+    headers = {
+        "X-Auth-Token": api_key
+    }
+
+    try:
+        response = requests.get(
+            "https://api.football-data.org/v4/matches",
+            headers=headers
+        )
+
+        if response.status_code != 200:
+            await ctx.send("❌ Nie udało się pobrać meczów.")
+            return
+
+        data = response.json()
+
+        matches = data.get("matches", [])
+
+        if not matches:
+            await ctx.send("📅 Dzisiaj nie ma żadnych meczów.")
+            return
+
+        priority = [
+            "UEFA Champions League",
+            "Premier League",
+            "La Liga",
+            "Serie A",
+            "Bundesliga",
+            "Ligue 1",
+            "Ekstraklasa"
+        ]
+
+        best_matches = []
+
+        for league in priority:
+            league_matches = [
+                m for m in matches
+                if m["competition"]["name"] == league
+            ]
+
+            if league_matches:
+                best_matches = league_matches
+                break
+
+        if not best_matches:
+            best_matches = matches
+
+        match = choice(best_matches)
+
+        home = match["homeTeam"]["name"]
+        away = match["awayTeam"]["name"]
+        league = match["competition"]["name"]
+        utc = match["utcDate"]
+
+        embed = discord.Embed(
+            title="⚽ Polecany mecz dnia",
+            color=discord.Color.green()
+        )
+
+        embed.add_field(
+            name="Mecz",
+            value=f"**{home} 🆚 {away}**",
+            inline=False
+        )
+
+        embed.add_field(
+            name="Rozgrywki",
+            value=league,
+            inline=False
+        )
+
+        embed.add_field(
+            name="Start (UTC)",
+            value=utc.replace("T", " ").replace("Z", ""),
+            inline=False
+        )
+
+        embed.set_footer(
+            text="football-data.org"
+        )
+
+        await ctx.send(embed=embed)
+
+    except Exception as e:
+        print(e)
+        await ctx.send("❌ Wystąpił błąd podczas pobierania meczów.")
+
+
+
+
 
 bot.run(
     os.getenv("DISCORD_TOKEN")
