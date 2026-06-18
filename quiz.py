@@ -7,6 +7,10 @@ import discord
 from discord.ext import commands
 from google import genai
 
+
+import requests
+from datetime import datetime
+
 # =========================
 # GEMINI SETUP
 # =========================
@@ -55,6 +59,19 @@ async def on_ready():
         status=discord.Status.online,
         activity=discord.Game("Quizy AI 🎮")
     )
+
+
+
+
+@bot.command()
+async def testapi(ctx):
+    key = os.getenv("FOOTBALL_API_KEY")
+
+    if key:
+        await ctx.send(f"✅ Klucz znaleziony! ({len(key)} znaków)")
+    else:
+        await ctx.send("❌ Nie znaleziono FOOTBALL_API_KEY")
+
 
 # =========================
 # HELLO COMMAND
