@@ -138,11 +138,10 @@ Rules:
         print("GEMINI ERROR:")
         print(e)
 
-        await ctx.send(
-            "⚠️ Gemini jest obecnie przeciążone. Spróbuj ponownie za chwilę."
-            )
-
-    return
+    await ctx.send(
+        "⚠️ Gemini jest obecnie przeciążone. Spróbuj ponownie za chwilę."
+    )
+    
 
     try:
 
